@@ -12,20 +12,20 @@ import (
 )
 
 func setupRouter(router *mux.Router) {
-	router.Methods("GET").Path("/test").HandlerFunc(testGet)
+	router.Methods("GET").Path("/test").HandlerFunc(TestGet)
 	router.Methods("POST").Path("/testFile").HandlerFunc(testPostFile)
 }
 
-func testGet(w http.ResponseWriter, r *http.Request) {
+func TestGet(w http.ResponseWriter, r *http.Request) {
 	log.Println("Test GET called")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Test"))
+	_, _ = w.Write([]byte("Test"))
 }
 
 func testPostFile(w http.ResponseWriter, r *http.Request) {
 	log.Println("Test POST file request called")
 	// Limit max memory for a single file
-	r.ParseMultipartForm(32 << 20)
+	_ = r.ParseMultipartForm(32 << 20)
 	var buf bytes.Buffer
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -34,7 +34,7 @@ func testPostFile(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 	name := strings.Split(header.Filename, ".")
 	fmt.Printf("File name %s\n", name[0])
-	io.Copy(&buf, file)
+	_, _ = io.Copy(&buf, file)
 
 	content := buf.String()
 	fmt.Println(content)
