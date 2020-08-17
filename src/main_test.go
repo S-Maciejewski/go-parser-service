@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -11,9 +14,9 @@ import (
 	"testing"
 )
 
-type Form struct {
-	Value map[string][]string
-	File  map[string][]*multipart.FileHeader
+type Response struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
 }
 
 func TestGetTest(t *testing.T) {
@@ -57,5 +60,13 @@ func TestPostFileTest(t *testing.T) {
 		t.Errorf("Wrong status code - got %v, expected %v", status, http.StatusOK)
 	}
 
-	t.Log(recorder.Body.String())
+	var resBody Response
+	err = json.Unmarshal(recorder.Body.Bytes(), &resBody)
+	if err != nil {
+		t.Error(err)
+	}
+	checksum := md5.Sum([]byte(resBody.Content))
+	if !(resBody.Name == "test" && hex.EncodeToString(checksum[:]) == "343d5e9e9766c9c617fbf3a7c7c64779") {
+		t.Error("Name of the file and / or content checksum incorrect")
+	}
 }
