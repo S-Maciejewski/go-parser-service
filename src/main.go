@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"strings"
 
@@ -20,6 +21,7 @@ type FileResponse struct {
 func setupRouter(router *mux.Router) {
 	router.Methods("GET").Path("/test").HandlerFunc(GetTest)
 	router.Methods("POST").Path("/testFile").HandlerFunc(PostFileTest)
+	router.Methods("POST").Path("/parse").HandlerFunc(XlsxToJSON)
 }
 
 func GetTest(w http.ResponseWriter, r *http.Request) {
@@ -28,28 +30,37 @@ func GetTest(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("Test"))
 }
 
-func PostFileTest(w http.ResponseWriter, r *http.Request) {
-	log.Println("Test POST file request called")
-	// Limit max memory for a single file
-	_ = r.ParseMultipartForm(32 << 20)
-	var buf bytes.Buffer
+func GetFileFromRequest(r *http.Request) (string, multipart.File) {
+	_ = r.ParseMultipartForm(32 << 20) // Max size limit for a file
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
 	name := strings.Split(header.Filename, ".")
-	fmt.Printf("File name %s\n", name[0])
+	return name[0], file
+}
+
+func PostFileTest(w http.ResponseWriter, r *http.Request) {
+	log.Println("Test POST file request called")
+	var buf bytes.Buffer
+	name, file := GetFileFromRequest(r)
+	defer file.Close()
+	fmt.Printf("File name %s\n", name)
 	_, _ = io.Copy(&buf, file)
 
 	content := buf.String()
 	fmt.Println(content)
 	buf.Reset()
-	res := FileResponse{Name: name[0], Content: content}
-	err = json.NewEncoder(w).Encode(res)
+	res := FileResponse{Name: name, Content: content}
+	err := json.NewEncoder(w).Encode(res)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func XlsxToJSON(w http.ResponseWriter, r *http.Request) {
+	log.Println("Received .xlsx file to parse")
+
 }
 
 func main() {
