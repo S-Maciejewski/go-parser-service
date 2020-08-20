@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/tealeg/xlsx"
 	"io"
 	"log"
 	"mime/multipart"
@@ -16,6 +17,12 @@ import (
 type FileResponse struct {
 	Name    string `json:"name,omitempty"`
 	Content string `json:"content,omitempty"`
+}
+
+type JsonNode struct {
+	ID       int        `json:"id"`
+	Name     string     `json:"name"`
+	Children []JsonNode `json:"children"`
 }
 
 func setupRouter(router *mux.Router) {
@@ -59,8 +66,24 @@ func PostFileTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func XlsxToJSON(w http.ResponseWriter, r *http.Request) {
-	log.Println("Received .xlsx file to parse")
+	name, file := GetFileFromRequest(r)
+	log.Printf("Received .xlsx file to parse - %s\n", name)
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, file)
+	wb, err := xlsx.OpenBinary(buf.Bytes())
+	if err != nil {
+		panic(err)
+	}
 
+	sheets := wb.Sheets
+	sh, _ := wb.Sheet[sheets[0].Name]
+
+	for i := 0; i < sh.MaxRow; i++ {
+		fmt.Println(sh.Row(i).Cells)
+		// TODO
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func main() {
