@@ -19,21 +19,7 @@ type Response struct {
 	Content string `json:"content"`
 }
 
-func TestGetTest(t *testing.T) {
-	req, err := http.NewRequest("GET", "/test", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetTest)
-	handler.ServeHTTP(recorder, req)
-	if status := recorder.Code; status != http.StatusOK {
-		t.Errorf("Wrong status code - got %v, expected %v", status, http.StatusOK)
-	}
-}
-
-func TestPostFileTest(t *testing.T) {
-	testFilePath := "../testData/test.txt"
+func PrepareFileRequest(testFilePath string, t *testing.T) (*httptest.ResponseRecorder, *http.Request) {
 	file, err := os.Open(testFilePath)
 	if err != nil {
 		t.Error(err)
@@ -52,7 +38,24 @@ func TestPostFileTest(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/testFile", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return httptest.NewRecorder(), req
+}
+
+func TestGetTest(t *testing.T) {
+	req, err := http.NewRequest("GET", "/test", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(GetTest)
+	handler.ServeHTTP(recorder, req)
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("Wrong status code - got %v, expected %v", status, http.StatusOK)
+	}
+}
+
+func TestPostFileTest(t *testing.T) {
+	recorder, req := PrepareFileRequest("../testData/test.txt", t)
 
 	PostFileTest(recorder, req)
 
@@ -61,12 +64,22 @@ func TestPostFileTest(t *testing.T) {
 	}
 
 	var resBody Response
-	err = json.Unmarshal(recorder.Body.Bytes(), &resBody)
+	err := json.Unmarshal(recorder.Body.Bytes(), &resBody)
 	if err != nil {
 		t.Error(err)
 	}
 	checksum := md5.Sum([]byte(resBody.Content))
 	if !(resBody.Name == "test" && hex.EncodeToString(checksum[:]) == "343d5e9e9766c9c617fbf3a7c7c64779") {
 		t.Error("Name of the file and / or content checksum incorrect")
+	}
+}
+
+func TestXlsxToJSON(t *testing.T) {
+	recorder, req := PrepareFileRequest("../testData/hierarchy.xlsx", t)
+
+	XlsxToJSON(recorder, req)
+
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("Wrong status code - got %v, expected %v", status, http.StatusOK)
 	}
 }
